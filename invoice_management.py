@@ -4,8 +4,78 @@ from fpdf import FPDF
 import os
 import base64
 
-# Streamlit App
-st.set_page_config(layout="wide")
+# Streamlit App Configuration
+st.set_page_config(
+    page_title="Invoice Management System",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for AdminLTE-like styling
+st.markdown("""
+    <style>
+    /* Main background */
+    .stApp {
+        background-color: #f4f6f9;
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #343a40 !important;
+        color: #c2c7d0;
+    }
+
+    /* Sidebar header */
+    [data-testid="stSidebar"] .sidebar-header {
+        padding: 20px;
+        background-color: #2c3136;
+        text-align: center;
+    }
+
+    /* Sidebar menu items */
+    [data-testid="stSidebar"] .sidebar-content {
+        padding: 10px;
+    }
+
+    /* Navigation menu items */
+    .nav-item {
+        padding: 10px;
+        border-radius: 5px;
+        margin: 5px 0;
+    }
+
+    .nav-item:hover {
+        background-color: #4b545c;
+    }
+
+    /* Cards styling */
+    .card {
+        background: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+        margin-bottom: 20px;
+        padding: 20px;
+    }
+
+    /* Widget boxes */
+    .info-box {
+        background: #fff;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 0 1px rgba(0,0,0,.125), 0 1px 3px rgba(0,0,0,.2);
+        margin-bottom: 20px;
+    }
+
+    /* Top navigation bar */
+    .top-nav {
+        background-color: #3c8dbc;
+        padding: 15px;
+        color: white;
+        margin-bottom: 20px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 
 # Add custom CSS for background image
 def set_background_image(image_path):
@@ -23,6 +93,7 @@ def set_background_image(image_path):
         unsafe_allow_html=True
     )
 
+
 # Set the background image
 set_background_image("background.jpg")
 
@@ -39,14 +110,18 @@ if 'password' not in st.session_state:
     st.session_state.password = ''
 
 # Login Page
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
 if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1,2,1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.title("Invoice Management System Login")  # Centered title
         with st.form("login_form"):
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             submit_button = st.form_submit_button("Login")
+
             
             if submit_button:
                 if authenticate(username, password):
@@ -64,9 +139,22 @@ def logout():
     st.session_state.username = ''
     st.session_state.password = ''
 
+# Dashboard Layout (After Login)
+if st.session_state.logged_in:
+    # Top Navigation Bar
+    st.markdown("""
+        <div class="top-nav">
+            <h3 style="margin:0;">Invoice Management System</h3>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <span>Welcome, {username}</span>
+                <a href="#" onclick="alert('Logout functionality goes here')" style="color:white;">Logout</a>
+            </div>
+        </div>
+    """.format(username=st.session_state.username), unsafe_allow_html=True)
+    
 # Rest of the application (only accessible after login)
 # Add logout button to sidebar
-st.sidebar.title("Menu")
+st.sidebar.title("Editors Chamber")
 if st.sidebar.button("Logout"):
     logout()
     st.rerun()
@@ -150,16 +238,14 @@ def generate_invoice(customer_id, product_ids, quantities, total_amount):
     return filename
 
 # Sidebar Menu
-st.sidebar.title("Menu")
+st.sidebar.title("Dashboard")
 menu = st.sidebar.radio(
     "Navigation",
-    ["Home", "Customer Management", "Product Management", "Invoice Management"]
+    ["Home", "Customer Management", "Product Management", "Invoice Management","Admin"]
 )
 
 # Home Page
 if menu == "Home":
-    st.title("Invoice Management System")
-    st.write("Welcome to the Invoice Management System!")
     st.write("Use the sidebar to navigate to different sections.")
 
 # Customer Management
@@ -339,3 +425,162 @@ elif menu == "Invoice Management":
     elif create_or_manage == "Manage":
         st.subheader("Manage Invoices")
         st.dataframe(invoices)
+
+        # Admin Section
+elif menu == "Admin":
+    st.title("Admin Dashboard")
+
+    # Restrict access to Admins only
+    if st.session_state.username != "tushar12uc":  # Replace with role-based check if needed
+        st.error("You do not have permission to access this section.")
+        st.stop()
+
+         # Admin Actions
+    admin_action = st.radio("Choose Action", ["Add Users", "Manage Users"])
+
+    # Load or initialize user data
+    USERS_FILE = "users.csv"
+    if os.path.exists(USERS_FILE):
+        users = pd.read_csv(USERS_FILE)
+    else:
+        users = pd.DataFrame(columns=["username", "password", "role"])
+
+    # Add Users
+    if admin_action == "Add Users":
+        st.subheader("Add New User")
+        new_username = st.text_input("Username")
+        new_password = st.text_input("Password", type="password")
+        new_role = st.selectbox("Role", ["Admin", "Editor", "Viewer"])
+        add_user_button = st.button("Add User")
+
+        if add_user_button:
+            if new_username and new_password:
+                if new_username in users['username'].values:
+                    st.error("Username already exists!")
+                else:
+                    new_user = pd.DataFrame([[new_username, new_password, new_role]],
+                                           columns=["username", "password", "role"])
+                    users = pd.concat([users, new_user], ignore_index=True)
+                    users.to_csv(USERS_FILE, index=False)
+                    st.success("User added successfully!")
+            else:
+                st.error("Username and password are required!")
+
+    # Manage Users
+    elif admin_action == "Manage Users":
+        st.subheader("Manage Users")
+
+        # Display Existing Users
+        st.write("### Existing Users")
+        st.dataframe(users)
+
+        # Edit or Delete User
+        st.write("### Edit or Delete User")
+        username_to_edit = st.text_input("Enter Username to Edit/Delete")
+        if username_to_edit:
+            user_to_edit = users[users['username'] == username_to_edit]
+            if not user_to_edit.empty:
+                st.write("Current Details:")
+                st.write(user_to_edit)
+
+                new_password = st.text_input("New Password", type="password")
+                new_role = st.selectbox("New Role", ["Admin", "Editor", "Viewer"], index=["Admin", "Editor", "Viewer"].index(user_to_edit.iloc[0]['role']))
+
+                if st.button("Update User"):
+                    users.loc[users['username'] == username_to_edit, 'password'] = new_password
+                    users.loc[users['username'] == username_to_edit, 'role'] = new_role
+                    users.to_csv(USERS_FILE, index=False)
+                    st.success("User updated successfully!")
+
+                if st.button("Delete User"):
+                    users = users[users['username'] != username_to_edit]
+                    users.to_csv(USERS_FILE, index=False)
+                    st.success("User deleted successfully!")
+            else:
+                st.error("Username not found!")
+
+
+    elif menu == "Admin":
+     st.title("Admin Dashboard")
+
+    # Restrict access to Admins only
+    if st.session_state.username != "tushar12uc":  # Replace with role-based check if needed
+        st.error("You do not have permission to access this section.")
+        st.stop()
+
+    # Load or initialize user data
+    USERS_FILE = "users.csv"
+    if os.path.exists(USERS_FILE):
+        users = pd.read_csv(USERS_FILE)
+    else:
+        users = pd.DataFrame(columns=["username", "password", "role"])
+
+    # Admin Button to Show Subheadings
+    if st.button("Admin Actions"):
+        st.session_state.show_admin_actions = True  # Set a session state to control visibility
+
+    # Show Subheadings if Admin Button is Clicked
+    if st.session_state.get("show_admin_actions", False):
+        admin_submenu = st.radio(
+            "Admin Functions",
+            ["User", "Company", "Terms and Conditions"]
+        )
+
+        # User Submenu
+        if admin_submenu == "User":
+            st.subheader("User Management")
+            user_action = st.radio("Choose Action", ["Add User", "Manage Users"])
+
+            # Add User
+            if user_action == "Add User":
+                st.subheader("Add New User")
+                new_username = st.text_input("Username")
+                new_password = st.text_input("Password", type="password")
+                new_role = st.selectbox("Role", ["Admin", "Editor", "Viewer"])
+                add_user_button = st.button("Add User")
+
+                if add_user_button:
+                    if new_username and new_password:
+                        if new_username in users['username'].values:
+                            st.error("Username already exists!")
+                        else:
+                            new_user = pd.DataFrame([[new_username, new_password, new_role]],
+                                                   columns=["username", "password", "role"])
+                            users = pd.concat([users, new_user], ignore_index=True)
+                            users.to_csv(USERS_FILE, index=False)
+                            st.success("User added successfully!")
+                    else:
+                        st.error("Username and password are required!")
+
+            # Manage Users
+            elif user_action == "Manage Users":
+                st.subheader("Manage Users")
+
+                # Display Existing Users
+                st.write("### Existing Users")
+                st.dataframe(users)
+
+                # Edit or Delete User
+                st.write("### Edit or Delete User")
+                username_to_edit = st.text_input("Enter Username to Edit/Delete")
+                if username_to_edit:
+                    user_to_edit = users[users['username'] == username_to_edit]
+                    if not user_to_edit.empty:
+                        st.write("Current Details:")
+                        st.write(user_to_edit)
+
+                        new_password = st.text_input("New Password", type="password")
+                        new_role = st.selectbox("New Role", ["Admin", "Editor", "Viewer"], index=["Admin", "Editor", "Viewer"].index(user_to_edit.iloc[0]['role']))
+
+                        if st.button("Update User"):
+                            users.loc[users['username'] == username_to_edit, 'password'] = new_password
+                            users.loc[users['username'] == username_to_edit, 'role'] = new_role
+                            users.to_csv(USERS_FILE, index=False)
+                            st.success("User updated successfully!")
+
+                        if st.button("Delete User"):
+                            users = users[users['username'] != username_to_edit]
+                            users.to_csv(USERS_FILE, index=False)
+                            st.success("User deleted successfully!")
+                    else:
+                        st.error("Username not found!")
