@@ -276,8 +276,9 @@ def generate_invoice(customer_id, product_ids, quantities, total_amount):
 st.sidebar.title("Dashboard")
 menu = st.sidebar.radio(
     "Navigation",
-    ["Home", "Customer Management", "Product Management", "Invoice Management","Admin","Profile","Terms and Conditions"]
+    ["Home", "Customer Management", "Product Management", "Invoice Management","Admin"]
 )
+
 
 # Home Page
 if menu == "Home":
@@ -651,139 +652,137 @@ elif menu == "Invoice Management":
         else:
             st.dataframe(invoices, use_container_width=True)
 
-
-
-        # Admin Section
+# Admin Section as a collapsible button
 if menu == "Admin":
-    st.title("🛠 Admin Dashboard")
-    st.markdown("---")
+    with st.sidebar.expander("Admin", expanded=False):
+        admin_menu = st.radio("Admin Options", ["Add Users", "Manage Users", "Profile", "Terms and Conditions"])
 
-    # Restrict access to Admins only
-    if st.session_state.username != "tushar12uc":  # Replace with role-based check if needed
-        st.error("🚫 You do not have permission to access this section.")
-        st.stop()
+    # Add Users Section
+    if admin_menu == "Add Users":
+        st.title("🔒 Add New User")
+        st.write("Fill in the details below to add a new user.")
 
-    USERS_FILE = "users.csv"
-    if os.path.exists(USERS_FILE):
-        users = pd.read_csv(USERS_FILE)
-    else:
-        users = pd.DataFrame(columns=["Username", "Password", "Role"])
+        # Form to collect user details
+        with st.form(key='add_user_form'):
+            col1, col2 = st.columns(2)  # Two columns layout for the form
+            with col1:
+                username = st.text_input("Username", placeholder="Enter username", max_chars=20)
+                email = st.text_input("Email Address", placeholder="Enter email address")
+            with col2:
+                password = st.text_input("Password", type="password", placeholder="Enter password", max_chars=20)
+                role = st.selectbox("Role", ["Admin", "User", "Manager", "Customer"], index=1)
 
-    # Admin Actions with Tabs for Better UI
-    tab1, tab2 = st.tabs(["➕ Add Users", "🔍 Manage Users"])
+            submit_button = st.form_submit_button("Add User")
 
-    with tab1:
-        st.subheader("Add New User")
-        st.markdown("<h5 style='color: #4CAF50;'>👤 Enter Username</h5>", unsafe_allow_html=True)
-        new_username = st.text_input("", placeholder="Username")
-
-        st.markdown("<h5 style='color: #4CAF50;'>🔑 Enter Password</h5>", unsafe_allow_html=True)
-        new_password = st.text_input("", placeholder="Password", type="password")
-
-        st.markdown("<h5 style='color: #4CAF50;'>🛠 Select Role</h5>", unsafe_allow_html=True)
-        new_role = st.selectbox("", ["Admin", "Editor", "Viewer"], index=2)
-
-        add_user_button = st.button("🚀 Add User", use_container_width=True)
-
-        if add_user_button:
-            if new_username and new_password:
-                if new_username in users['Username'].values:
-                    st.error("⚠️ Username already exists!")
-                else:
-                    new_user = pd.DataFrame([[new_username, new_password, new_role]],
-                                            columns=["Username", "Password", "Role"])
-                    users = pd.concat([users, new_user], ignore_index=True)
-                    users.to_csv(USERS_FILE, index=False)
-                    st.success(f"✅ User **{new_username}** added successfully!")
+        # Handle form submission
+        if submit_button:
+            if not username or not password or not email:
+                st.error("⚠️ All fields are required. Please fill in all the fields.")
             else:
-                st.error("⚠️ Username and password are required!")
+                # Assuming a CSV file for storing users
+                USERS_FILE = "users.csv"
 
-    with tab2:
-        st.subheader("Manage Existing Users")
-        if users.empty:
-            st.warning("No users found. Add users first!")
-        else:
-            st.dataframe(users, use_container_width=True)
-
-            username_to_edit = st.text_input("🔍 Enter Username to Edit/Delete")
-            if username_to_edit:
-                user_to_edit = users[users['Username'] == username_to_edit]
-                if not user_to_edit.empty:
-                    st.write("📌 Current Details:")
-                    st.table(user_to_edit)
-
-                    st.markdown("<h5 style='color: #4CAF50;'>🔑 Update Password</h5>", unsafe_allow_html=True)
-                    new_password = st.text_input("New Password", type="password")
-
-                    st.markdown("<h5 style='color: #4CAF50;'>🛠 Update Role</h5>", unsafe_allow_html=True)
-                    new_role = st.selectbox("", ["Admin", "Editor", "Viewer"],
-                                            index=["Admin", "Editor", "Viewer"].index(user_to_edit.iloc[0]['Role']))
-
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        if st.button("✅ Update User", use_container_width=True):
-                            users.loc[users['Username'] == username_to_edit, 'Password'] = new_password
-                            users.loc[users['Username'] == username_to_edit, 'Role'] = new_role
-                            users.to_csv(USERS_FILE, index=False)
-                            st.success(f"✅ User **{username_to_edit}** updated successfully!")
-
-                    with col2:
-                        if st.button("❌ Delete User", use_container_width=True):
-                            users = users[users['Username'] != username_to_edit]
-                            users.to_csv(USERS_FILE, index=False)
-                            st.success(f"🗑️ User **{username_to_edit}** deleted successfully!")
+                if os.path.exists(USERS_FILE):
+                    users = pd.read_csv(USERS_FILE)
                 else:
-                    st.error("⚠️ Username not found!")
+                    users = pd.DataFrame(columns=["username", "password", "role", "email"])
 
+                # Check if the username already exists
+                if username in users['username'].values:
+                    st.error(f"⚠️ User `{username}` already exists. Please choose a different username.")
+                else:
+                    # Append the new user details to the dataframe
+                    new_user = pd.DataFrame([[username, password, role, email]], columns=["username", "password", "role", "email"])
+                    users = pd.concat([users, new_user], ignore_index=True)
 
-
-
-        #Profile Details
-elif menu == "Profile":
-    st.title("👤 My Profile")
-    USERS_FILE = "users.csv"
-    
-    if os.path.exists(USERS_FILE):
-        users = pd.read_csv(USERS_FILE)
-        user_info = users[users['username'] == st.session_state.username]
-        
-        if not user_info.empty:
-            st.subheader("📌 Profile Details")
-            st.markdown(f"**👤 Username:** {user_info.iloc[0]['username']}")
-            st.markdown(f"**🔑 Role:** {user_info.iloc[0]['role']}")
-            
-            with st.expander("✏️ Edit Profile"):
-                new_password = st.text_input("🔒 Change Password", type="password")
-                if st.button("✅ Update Password"):
-                    users.loc[users['username'] == st.session_state.username, 'password'] = new_password
+                    # Save the updated user list back to the CSV file
                     users.to_csv(USERS_FILE, index=False)
-                    st.success("🔑 Password updated successfully!")
-        else:
-            st.warning("⚠️ No profile data found.")
-    else:
-        st.error("⚠️ User database not found!")
 
-elif menu == "Terms and Conditions":
-    st.title("📜 Terms and Conditions")
-    
-    terms_content = """
-    ### 1. Introduction
-    Welcome to our service. By using this platform, you agree to abide by the following terms.
-    
-    ### 2. User Responsibilities
-    - Maintain confidentiality of your account.
-    - Do not misuse or exploit the platform.
-    
-    ### 3. Privacy Policy
-    We ensure data security, but users are responsible for safeguarding their credentials.
-    
-    ### 4. Amendments
-    The terms may be updated at any time, and users are encouraged to review them regularly.
-    
-    ### 5. Contact Us
-    For queries, reach out to support@example.com.
-    """
-    
-    with st.expander("📜 Read Full Terms and Conditions"):
+                    # Success message
+                    st.success(f"✅ User `{username}` added successfully!")
+
+    # Manage Users Section
+    elif admin_menu == "Manage Users":
+        st.title("⚙️ Manage Users")
+        st.write("List and management options for existing users.")
+
+        # Load users from the CSV file
+        USERS_FILE = "users.csv"
+
+        if os.path.exists(USERS_FILE):
+            users = pd.read_csv(USERS_FILE)
+            st.write(f"### Existing Users (Total: {len(users)})")
+            st.dataframe(users)
+
+            # Edit User Section
+            st.subheader("✏️ Edit User")
+            edit_user = st.selectbox("Select User to Edit", users['username'])
+            edit_user_info = users[users['username'] == edit_user]
+
+            if edit_user_info.empty:
+                st.warning("⚠️ User not found!")
+            else:
+                col1, col2 = st.columns(2)  # Two columns layout for edit form
+                with col1:
+                    new_password = st.text_input("New Password", value=edit_user_info.iloc[0]['password'], type="password")
+                    new_email = st.text_input("New Email Address", value=edit_user_info.iloc[0]['email'])
+                with col2:
+                    new_role = st.selectbox("New Role", ["Admin", "User", "Manager", "Customer"], index=["Admin", "User", "Manager", "Customer"].index(edit_user_info.iloc[0]['role']))
+
+                if st.button("✅ Update User"):
+                    # Update the user details
+                    users.loc[users['username'] == edit_user, 'password'] = new_password
+                    users.loc[users['username'] == edit_user, 'role'] = new_role
+                    users.loc[users['username'] == edit_user, 'email'] = new_email
+
+                    # Save the updated users list back to the CSV file
+                    users.to_csv(USERS_FILE, index=False)
+
+                    st.success(f"✅ User {edit_user} updated successfully!")
+
+            # Delete User Section
+            st.subheader("🗑️ Delete User")
+            delete_user = st.selectbox("Select User to Delete", users['username'])
+
+            if st.button("✅ Delete User"):
+                if delete_user:
+                    # Remove the selected user from the dataframe
+                    users = users[users['username'] != delete_user]
+
+                    # Save the updated users list back to the CSV file
+                    users.to_csv(USERS_FILE, index=False)
+
+                    st.success(f"✅ User {delete_user} deleted successfully!")
+        else:
+            st.error("⚠️ User database not found!")
+
+    # Profile Section
+    elif admin_menu == "Profile":
+        st.title("👤 Admin Profile")
+        st.write("Admin profile information and settings.")
+        st.markdown("Edit your profile information here.")
+        st.text_area("Bio", placeholder="Write a short bio", height=200)
+
+    # Terms and Conditions Section
+    elif admin_menu == "Terms and Conditions":
+        st.title("📜 Admin Terms and Conditions")
+        terms_content = """
+        ### 1. Introduction
+        Welcome to our service. By using this platform, you agree to abide by the following terms.
+        
+        ### 2. Admin Responsibilities
+        - Ensure platform security and proper user management.
+        - Comply with privacy regulations and data handling policies.
+        
+        ### 3. Amendments
+        The terms may be updated at any time, and admins are encouraged to review them regularly.
+        """
         st.markdown(terms_content)
 
+        # Add a checkbox to confirm acceptance of terms
+        agree_terms = st.checkbox("I agree to the Terms and Conditions")
+
+        if agree_terms:
+            st.success("You have agreed to the terms and conditions!")
+        else:
+            st.warning("Please read and agree to the terms to proceed.")
