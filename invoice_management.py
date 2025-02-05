@@ -276,87 +276,90 @@ def generate_invoice(customer_id, product_ids, quantities, total_amount):
 st.sidebar.title("Dashboard")
 menu = st.sidebar.radio(
     "Navigation",
-    ["Home", "Customer Management", "Product Management", "Invoice Management","Admin"]
+    ["Home", "Customer Management", "Product Management", "Invoice Management","Admin","Master Form","Order Management"]
 )
 
-
-# Home Page
+#Home Section
 if menu == "Home":
-     st.title("User Dashboard")
-     # Create a row layout
-     col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    st.title("User Dashboard")
+    
+    # Create the first row for year selection and submit button
+    col1, col2 = st.columns(2)  # Make both columns equal in size
+    with col1:
+     selected_year = st.selectbox("Select Financial Year", ["2024-2025", "2023-2024", "2022-2023"])
+    with col2:
+     submit_clicked = st.button("Submit")  # Store the button click state
+    if submit_clicked:  # Check if the button is clicked
+        st.write(f"You selected the financial year: {selected_year}")
+    
+    # Create the second row for summary cards
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    
+    with col1:
+        st.markdown(
+            """
+            <div class="card">
+                <h3 style="margin: 0;">09</h3>
+                <p>User Registrations</p>
+                <button style="padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with col2:
+        st.markdown(
+            """
+            <div class="card">
+                <h3 style="margin: 0;">10</h3>
+                <p>Pending Payments</p>
+                <button style="padding: 8px 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with col3:
+        st.markdown(
+            """
+            <div class="card">
+                <h3 style="margin: 0;">15</h3>
+                <p>Products</p>
+                <button style="padding: 8px 12px; background-color: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with col4:
+        st.markdown(
+            """
+            <div class="card">
+                <h3 style="margin: 0;">25</h3>
+                <p>Customers</p>
+                <button style="padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-# Create a box for User Registrations
-     with col1:
-      st.markdown(
-        """
-        <div class="card">
-            <h3 style="margin: 0;">09</h3>
-            <p>User Registrations</p>
-            <button style="padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# Create a second box for Pending Payments
-     with col2:
-      st.markdown(
-        """
-        <div class="card">
-            <h3 style="margin: 0;">10</h3>
-            <p>Pending Payments</p>
-            <button style="padding: 8px 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# Create a third box for Products
-     with col3:
-      st.markdown(
-        """
-        <div class="card">
-            <h3 style="margin: 0;">15</h3>
-            <p>Products</p>
-            <button style="padding: 8px 12px; background-color: #ff5722; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# Create a fourth box for Customers
-     with col4:
-      st.markdown(
-        """
-        <div class="card">
-            <h3 style="margin: 0;">25</h3>
-            <p>Customers</p>
-            <button style="padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-      # Define the data for the graph and table
-      columns = ["Registers", "Payments", "Products", "Customers"]
-      data = {
+    # Define the data for the graph and table
+    columns = ["Registers", "Payments", "Products", "Customers"]
+    data = {
     "Columns": columns,
     "Values": [9, 10, 15, 12],
 }
-     dataframe = pd.DataFrame(data)
+    dataframe = pd.DataFrame(data)
     # Define the data for the sales graph
-     sales_years = [2020, 2021, 2022, 2023, 2024]
-     sales_values = [1000, 1500, 2000, 2500, 3000]
+    sales_years = [2020, 2021, 2022, 2023, 2024]
+    sales_values = [1000, 1500, 2000, 2500, 3000]
 
      # Define the data for the donut chart
-     donut_labels = ["Product A", "Product B", "Product C", "Product D"]
-     donut_sizes = [30, 25, 20, 25]
+    donut_labels = ["Product A", "Product B", "Product C", "Product D"]
+    donut_sizes = [30, 25, 20, 25]
 
 # Layout with two columns
-     col1, col2 = st.columns([3, 2])
+    col1, col2 = st.columns([3, 2])
 
 # Left side: Graph
-     with col1:
+    with col1:
       st.write("### Overview Graph")
       fig, ax = plt.subplots(figsize=(4, 3))  # Adjust graph size
       ax.bar(data["Columns"], data["Values"], color=["blue", "green", "orange", "red"])
@@ -366,7 +369,7 @@ if menu == "Home":
       st.pyplot(fig)
 
       # Right side: Sales Graph
-     with col2:
+    with col2:
       st.write("### Sales Over Time")
       fig, ax = plt.subplots(figsize=(4, 3))  # Adjust graph size
       ax.plot(sales_years, sales_values, marker='o', linestyle='-', color='purple')
@@ -381,8 +384,6 @@ if menu == "Home":
       wedges, texts, autotexts = ax.pie(donut_sizes, labels=donut_labels, autopct='%1.1f%%', startangle=90, wedgeprops={'edgecolor': 'black'})
       ax.set_title("Product Sales Distribution")
       st.pyplot(fig)
-
-
 
 
 
@@ -652,6 +653,7 @@ elif menu == "Invoice Management":
         else:
             st.dataframe(invoices, use_container_width=True)
 
+
 # Admin Section as a collapsible button
 if menu == "Admin":
     with st.sidebar.expander("Admin", expanded=False):
@@ -786,3 +788,81 @@ if menu == "Admin":
             st.success("You have agreed to the terms and conditions!")
         else:
             st.warning("Please read and agree to the terms to proceed.")
+
+
+# Sidebar collapsible button
+if menu == "Master Form":
+    with st.sidebar.expander("📜 Master Form", expanded=False):
+        master_option = st.radio("Select a Master Form Section", 
+                                 ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"])
+
+    # Section Containers for cleaner UI
+    st.markdown("---")
+
+    # Services Section
+    if master_option == "🛠 Services":
+        st.header("🛠 Service Management")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            service_name = st.text_input("🔹 Service Name", placeholder="Enter service name")
+        with col2:
+            service_price = st.number_input("💰 Service Price", min_value=0.0, step=0.1, format="%.2f")
+
+        if st.button("💾 Save Service"):
+            if service_name.strip() == "":
+                st.error("⚠️ Service name cannot be empty!")
+            else:
+                st.success(f"✅ Service '{service_name}' saved successfully!")
+
+    # Tax Master Section
+    elif master_option == "📊 Tax Master":
+        st.header("📊 Tax Management")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            tax_name = st.text_input("🔹 Tax Name", placeholder="Enter tax type (e.g., GST, VAT)")
+        with col2:
+            tax_rate = st.number_input("📉 Tax Rate (%)", min_value=0.0, max_value=100.0, step=0.1, format="%.1f")
+
+        if st.button("💾 Save Tax"):
+            if tax_name.strip() == "":
+                st.error("⚠️ Tax name cannot be empty!")
+            else:
+                st.success(f"✅ Tax '{tax_name}' at {tax_rate}% saved successfully!")
+
+    # Item Master Section
+    elif master_option == "📦 Item Master":
+        st.header("📦 Item Management")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            item_name = st.text_input("🔹 Item Name", placeholder="Enter item name")
+            item_stock = st.number_input("📦 Stock Quantity", min_value=0, step=1)
+        with col2:
+            item_price = st.number_input("💰 Item Price", min_value=0.0, step=0.1, format="%.2f")
+
+        if st.button("💾 Save Item"):
+            if item_name.strip() == "":
+                st.error("⚠️ Item name cannot be empty!")
+            else:
+                st.success(f"✅ Item '{item_name}' saved with price {item_price} and stock {item_stock}!")
+
+    # Party Master Section
+    elif master_option == "🏢 Party Master":
+        st.header("🏢 Party Management")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            party_name = st.text_input("🔹 Party Name", placeholder="Enter party name")
+            contact_number = st.text_input("📞 Contact Number", placeholder="Enter phone number")
+        with col2:
+            address = st.text_area("🏠 Address", placeholder="Enter full address")
+
+        if st.button("💾 Save Party"):
+            if party_name.strip() == "":
+                st.error("⚠️ Party name cannot be empty!")
+            elif not contact_number.isdigit():
+                st.error("⚠️ Contact number must be numeric!")
+            else:
+                st.success(f"✅ Party '{party_name}' saved successfully!")
