@@ -569,89 +569,90 @@ elif menu == "Product Management":
 
 # Invoice Management
 elif menu == "Invoice Management":
-    st.markdown("<h2 style='color: #4CAF50;'>📜 Invoice Management</h2>", unsafe_allow_html=True)
-    create_or_manage = st.radio("🛠 Choose Action", ["➕ Create", "📂 Manage"], horizontal=True)
+    st.markdown("<h2 style='color: #4CAF50; text-align:center;'>📜 Invoice Management</h2>", unsafe_allow_html=True)
+    action = st.radio("🛠 Choose Action", ["➕ Create", "📂 Manage"], horizontal=True)
 
-    if create_or_manage == "➕ Create":
-        st.markdown("### 🆕 Create New Invoice")
+    if action == "➕ Create":
+        st.markdown("<h3 style='color: #4CAF50;'>🆕 Create Invoice</h3>", unsafe_allow_html=True)
+
+        # Customer, Payment Status, and Invoice ID
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("**👤 Customer**", unsafe_allow_html=True)
+            customer_names = customers['customer_name'].tolist()
+            selected_customer = st.selectbox("Select", customer_names)
+            customer_id = customers.loc[customers['customer_name'] == selected_customer, 'customer_id'].values[0]
         
-        # Card 1: Customer Selection
-        st.markdown("<h4 style='color: #4CAF50;'>👤 Select Customer</h4>", unsafe_allow_html=True)
-        customer_names = customers['customer_name'].tolist()
-        selected_customer = st.selectbox("Choose a customer", customer_names)
-        customer_id = customers[customers['customer_name'] == selected_customer]['customer_id'].values[0]
+        with col2:
+            st.markdown("**💳 Payment Status**", unsafe_allow_html=True)
+            payment_status = st.selectbox("", ["✅ Paid", "❌ Unpaid", "🔄 Partially Paid"])
+        
+        with col3:
+            st.markdown("**🧾 Invoice ID**", unsafe_allow_html=True)
+            invoice_id = len(invoices) + 1
+            st.markdown(f"<h4 style='color: #FF5733;'>#{invoice_id}</h4>", unsafe_allow_html=True)
 
-        # Card 2: Product Selection
-        st.markdown("<h4 style='color: #4CAF50;'>🛍️ Select Products</h4>", unsafe_allow_html=True)
-        product_names = products['product_name'].tolist()
-        selected_products = st.multiselect("Choose products to add to the invoice", product_names)
-        product_ids = products[products['product_name'].isin(selected_products)]['product_id'].tolist()
+        # Product Selection
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("**🛍️ Select Products**", unsafe_allow_html=True)  
+        selected_products = st.multiselect("➕ Add", products['product_name'].tolist())
 
-        # Card 3: Quantity and Price Display
+        # Product Table
         if selected_products:
-            st.markdown("<h4 style='color: #4CAF50;'>🔢 Enter Quantities</h4>", unsafe_allow_html=True)
-            quantities = []
-            col1, col2 = st.columns(2)
+            st.markdown("### 📦 Product Details")
+            product_details = []
             for product in selected_products:
+                col1, col2, col3 = st.columns([2, 1, 1])
                 with col1:
-                    qty = st.number_input(f"Quantity for {product}", min_value=1, value=1)
-                    quantities.append(qty)
+                    qty = st.number_input(f"{product}", min_value=1, value=1, key=product)
                 with col2:
-                    price = products[products['product_name'] == product]['price'].values[0]
-                    st.write(f"💰 Price per unit: ₹{price:.2f}")
+                    price = products.loc[products['product_name'] == product, 'price'].values[0]
+                    st.markdown(f"**💰 ₹{price:.2f}**")
+                with col3:
+                    total_price = qty * price
+                    st.markdown(f"**🔄 ₹{total_price:.2f}**")
+                product_details.append((product, qty, price))
 
-        # Card 4: Discounts and Taxes
-        st.markdown("<h4 style='color: #4CAF50;'>💸 Discounts & 💰 Taxes</h4>", unsafe_allow_html=True)
-        discount, tax = st.columns(2)
-        with discount:
-            discount_value = st.number_input("Discount (%)", min_value=0.0, max_value=100.0, value=0.0)
-        with tax:
-            tax_value = st.number_input("Tax (%)", min_value=0.0, max_value=100.0, value=0.0)
+        # Discount & Tax
+        st.markdown("<hr>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            discount_value = st.number_input("💸 Discount (%)", min_value=0.0, max_value=100.0, value=0.0)
+        with col2:
+            tax_options = {"18%": 1.18, "28%": 2.28, "12%": 3.12}
+            tax_label = st.selectbox("📊 GST Tax", list(tax_options.keys()))
+            tax_value = tax_options[tax_label]
+        with col3:
+            if selected_products:
+                subtotal = sum(p * q for _, q, p in product_details)
+                total = subtotal * (1 - discount_value / 100) * (1 + tax_value / 100)
+                st.markdown(f"<h3 style='color: #4CAF50;'>🧾 Subtotal: ₹{subtotal:.2f} | <strong style='color: #FF5733;'>Total: ₹{total:.2f}</strong></h3>", unsafe_allow_html=True)
 
-        # Card 5: Calculate and Display Total
-        if selected_products:
-            subtotal = sum(
-                products[products['product_id'] == product_id]['price'].values[0] * qty
-                for product_id, qty in zip(product_ids, quantities)
-            )
-            total_amount = subtotal * (1 - discount_value / 100) * (1 + tax_value / 100)
-            st.markdown(f"<h3 style='color: #4CAF50;'>🧾 Subtotal: ₹{subtotal:.2f}  |  <strong style='color: #FF6347;'>Final Total: ₹{total_amount:.2f}</strong></h3>", unsafe_allow_html=True)
-
-        # Card 6: Payment Status
-        st.markdown("<h4 style='color: #4CAF50;'>💳 Payment Status</h4>", unsafe_allow_html=True)
-        payment_status = st.selectbox("Select payment status", ["✅ Paid", "❌ Unpaid", "🔄 Partially Paid"])
-
-        # Card 7: Generate Invoice
+        # Generate Invoice
+        st.markdown("<hr>", unsafe_allow_html=True)
         if st.button("📄 Generate Invoice", use_container_width=True):
-            filename = generate_invoice(customer_id, product_ids, quantities, total_amount)
-            new_invoice = pd.DataFrame([[len(invoices) + 1, customer_id, product_ids, quantities, total_amount, payment_status]],
-                                      columns=["invoice_id", "customer_id", "product_ids", "quantities", "total_amount", "payment_status"])
+            filename = generate_invoice(customer_id, [p[0] for p in product_details], [p[1] for p in product_details], total)
+            new_invoice = pd.DataFrame([[invoice_id, customer_id, [p[0] for p in product_details], [p[1] for p in product_details], total, payment_status]],
+                                       columns=["invoice_id", "customer_id", "products", "quantities", "total_amount", "payment_status"])
             invoices = pd.concat([invoices, new_invoice], ignore_index=True)
             save_data(invoices, INVOICES_FILE)
-            st.success("🎉 Invoice generated successfully!")
+            st.success("🎉 Invoice generated!")
 
             with open(filename, "rb") as f:
-                st.download_button(
-                    "📥 Download Invoice PDF",
-                    data=f,
-                    file_name=filename,
-                    mime="application/pdf",
-                    use_container_width=True
-                )
+                st.download_button("📥 Download PDF", data=f, file_name=filename, mime="application/pdf", use_container_width=True)
 
-    elif create_or_manage == "📂 Manage":
-        st.markdown("### 📋 Manage Invoices")
-        st.markdown("🔎 **Search by Customer Name or Invoice ID**")
-        search_query = st.text_input("Search invoices")
+    elif action == "📂 Manage":
+        st.markdown("<h3 style='color: #4CAF50;'>📋 Manage Invoices</h3>", unsafe_allow_html=True)
+        search_query = st.text_input("🔎 Search by Customer Name or Invoice ID")
+        filtered_invoices = invoices[
+            invoices['customer_id'].astype(str).str.contains(search_query, case=False) | 
+            invoices['invoice_id'].astype(str).str.contains(search_query, case=False)
+        ] if search_query else invoices
+        st.dataframe(filtered_invoices, use_container_width=True)
 
-        if search_query:
-            filtered_invoices = invoices[ 
-                invoices['customer_id'].astype(str).str.contains(search_query, case=False) |
-                invoices['invoice_id'].astype(str).str.contains(search_query, case=False)
-            ]
-            st.dataframe(filtered_invoices, use_container_width=True)
-        else:
-            st.dataframe(invoices, use_container_width=True)
+
+
+
 
 
 # Admin Section as a collapsible button
@@ -790,79 +791,223 @@ if menu == "Admin":
             st.warning("Please read and agree to the terms to proceed.")
 
 
+
+
+# Function to load data from CSV
+def load_data(file_path):
+    try:
+        data = pd.read_csv(file_path)
+        return data
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None
+
+# Function to save data to CSV
+def save_data(data, file_path):
+    try:
+        data.to_csv(file_path, index=False)
+        st.success(f"Data saved to {file_path}")
+    except Exception as e:
+        st.error(f"Error saving data: {e}")
+
+# File paths (assuming CSVs are in the same directory)
+item_file = "products.csv"
+service_file = "services.csv"
+tax_file = "taxes.csv"
+
+# Define the function before using it
+def handle_master_form_section(section):
+    st.write(f"Handling section: {section}")
+    # Add logic for handling different sections here
+
+# Initialize master_option to avoid NameError
+master_option = None
+
+# Ensure master_option is defined before using it
+if 'master_option' in locals() or 'master_option' in globals():
+    handle_master_form_section(master_option)
+
 # Sidebar collapsible button
 if menu == "Master Form":
     with st.sidebar.expander("📜 Master Form", expanded=False):
-        master_option = st.radio("Select a Master Form Section", 
-                                 ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"])
+        master_option = st.radio("Select a Master Form Section",  # Ensure this is not empty
+    ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"]
+)
+        
+def handle_master_form_section(section):
+    # Handle Item Master
+    if section == "📦 Item Master":
+        item_data = load_data(item_file)
+        action = st.selectbox("Choose Action", ["Add", "Manage"], key="item_action")
+        
+        if action == "Add":
+            st.subheader("Add New Item")
+            col1, col2, col3 = st.columns([3, 2, 2])
+            
+            with col1:
+                product_name = st.text_input("Product Name")
+                description = st.text_input("Description")
+            with col2:
+                price = st.number_input("Price", min_value=0.0)
+                stock = st.number_input("Stock", min_value=0.0)
+            with col3:
+                category = st.selectbox("Category", ["Electronics", "Furniture", "Clothing", "Groceries"])
+            
+            if st.button("Add Item"):
+                if product_name and description and price >= 0 and stock >= 0:
+                    new_item = pd.DataFrame({
+                        "product_id": [max(item_data['product_id']) + 1],
+                        "product_name": [product_name],
+                        "description": [description],
+                        "price": [price],
+                        "stock": [stock],
+                        "category": [category]
+                    })
+                    item_data = pd.concat([item_data, new_item], ignore_index=True)
+                    save_data(item_data, item_file)
+                    st.success("Item added successfully!")
+                else:
+                    st.error("Please fill in all fields correctly.")
+        
+        elif action == "Manage":
+            st.subheader("Manage Items")
+            st.dataframe(item_data)
+            col1, col2 = st.columns(2)
+            with col1:
+                item_to_edit = st.selectbox("Edit Item", item_data['product_id'].tolist(), key="edit_item")
+            with col2:
+                item_to_delete = st.selectbox("Delete Item", item_data['product_id'].tolist(), key="delete_item")
+            
+            if item_to_edit:
+                new_price = st.number_input("New Price", min_value=0.0, key="edit_price")
+                new_stock = st.number_input("New Stock", min_value=0.0, key="edit_stock")
+                if st.button("Update Item"):
+                    item_data.loc[item_data['product_id'] == item_to_edit, ['price', 'stock']] = new_price, new_stock
+                    save_data(item_data, item_file)
+                    st.success("Item updated successfully!")
+            
+            if item_to_delete:
+                if st.button("Delete Item"):
+                    item_data = item_data[item_data['product_id'] != item_to_delete]
+                    save_data(item_data, item_file)
+                    st.success("Item deleted successfully!")
 
-    # Section Containers for cleaner UI
-    st.markdown("---")
+    
+    # Handle Services Master
+    elif section == "🛠 Services":
+        service_data = load_data(service_file)
+        action = st.selectbox("Choose Action", ["Add", "Manage"])
+        
+        if action == "Add":
+            st.subheader("Add New Service")
+            col1, col2, col3 = st.columns([2, 2, 2])
+            with col1:
+                service_name = st.text_input("Enter Service Name")
+                description = st.text_input("Enter Service Description")
+            with col2:
+                price = st.number_input("Enter Price", min_value=0.0)
+            with col3:
+                duration = st.number_input("Enter Duration (in hours)", min_value=1)
+            
+            if st.button("Add Service"):
+                if service_name and description and price >= 0 and duration >= 1:
+                    new_service = pd.DataFrame({
+                        "service_id": [max(service_data['service_id']) + 1],
+                        "service_name": [service_name],
+                        "description": [description],
+                        "price": [price],
+                        "duration": [duration]
+                    })
+                    service_data = pd.concat([service_data, new_service], ignore_index=True)
+                    save_data(service_data, service_file)
+                    st.success("Service added successfully!")
+                else:
+                    st.error("Please fill in all fields correctly.")
+        
+        elif action == "Manage":
+            st.subheader("Manage Services")
+            st.dataframe(service_data)  # Display services
+            
+            # Create 2 columns for service actions (Edit/Delete)
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                service_to_edit = st.selectbox("Select a Service to Edit", service_data['service_id'].tolist())
+            with col2:
+                service_to_delete = st.selectbox("Select a Service to Delete", service_data['service_id'].tolist())
+            
+            # Edit Service
+            if service_to_edit:
+                service_to_edit_data = service_data[service_data['service_id'] == service_to_edit]
+                st.write("Edit Service:", service_to_edit_data)
+                new_price = st.number_input("Enter New Price", min_value=0.0)
+                new_duration = st.number_input("Enter New Duration (in hours)", min_value=1)
+                if st.button("Update Service"):
+                    service_data.loc[service_data['service_id'] == service_to_edit, 'price'] = new_price
+                    service_data.loc[service_data['service_id'] == service_to_edit, 'duration'] = new_duration
+                    save_data(service_data, service_file)
+                    st.success("Service updated successfully!")
+            
+            # Delete Service
+            if service_to_delete:
+                if st.button("Delete Service"):
+                    service_data = service_data[service_data['service_id'] != service_to_delete]
+                    save_data(service_data, service_file)
+                    st.success("Service deleted successfully!")
+    
+    # Handle Tax Master
+    elif section == "📊 Tax Master":
+        tax_data = load_data(tax_file)
+        action = st.selectbox("Choose Action", ["Add", "Manage"])
+        
+        if action == "Add":
+            st.subheader("Add New Tax")
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                tax_type = st.text_input("Enter Tax Type")
+            with col2:
+                rate = st.number_input("Enter Rate", min_value=0.0)
+            
+            if st.button("Add Tax"):
+                if tax_type and rate >= 0:
+                    new_tax = pd.DataFrame({
+                        "tax_id": [max(tax_data['tax_id']) + 1],
+                        "tax_type": [tax_type],
+                        "rate": [rate]
+                    })
+                    tax_data = pd.concat([tax_data, new_tax], ignore_index=True)
+                    save_data(tax_data, tax_file)
+                    st.success("Tax added successfully!")
+                else:
+                    st.error("Please fill in all fields correctly.")
+        
+        elif action == "Manage":
+            st.subheader("Manage Taxes")
+            st.dataframe(tax_data)  # Display taxes
+            
+            # Create 2 columns for tax actions (Edit/Delete)
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                tax_to_edit = st.selectbox("Select a Tax to Edit", tax_data['tax_id'].tolist())
+            with col2:
+                tax_to_delete = st.selectbox("Select a Tax to Delete", tax_data['tax_id'].tolist())
+            
+            # Edit Tax
+            if tax_to_edit:
+                tax_to_edit_data = tax_data[tax_data['tax_id'] == tax_to_edit]
+                st.write("Edit Tax:", tax_to_edit_data)
+                new_rate = st.number_input("Enter New Rate", min_value=0.0)
+                if st.button("Update Tax"):
+                    tax_data.loc[tax_data['tax_id'] == tax_to_edit, 'rate'] = new_rate
+                    save_data(tax_data, tax_file)
+                    st.success("Tax updated successfully!")
+            
+            # Delete Tax
+            if tax_to_delete:
+                if st.button("Delete Tax"):
+                    tax_data = tax_data[tax_data['tax_id'] != tax_to_delete]
+                    save_data(tax_data, tax_file)
+                    st.success("Tax deleted successfully!")
 
-    # Services Section
-    if master_option == "🛠 Services":
-        st.header("🛠 Service Management")
-        col1, col2 = st.columns(2)
+# Call the function based on selected section
+handle_master_form_section(master_option)
 
-        with col1:
-            service_name = st.text_input("🔹 Service Name", placeholder="Enter service name")
-        with col2:
-            service_price = st.number_input("💰 Service Price", min_value=0.0, step=0.1, format="%.2f")
-
-        if st.button("💾 Save Service"):
-            if service_name.strip() == "":
-                st.error("⚠️ Service name cannot be empty!")
-            else:
-                st.success(f"✅ Service '{service_name}' saved successfully!")
-
-    # Tax Master Section
-    elif master_option == "📊 Tax Master":
-        st.header("📊 Tax Management")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            tax_name = st.text_input("🔹 Tax Name", placeholder="Enter tax type (e.g., GST, VAT)")
-        with col2:
-            tax_rate = st.number_input("📉 Tax Rate (%)", min_value=0.0, max_value=100.0, step=0.1, format="%.1f")
-
-        if st.button("💾 Save Tax"):
-            if tax_name.strip() == "":
-                st.error("⚠️ Tax name cannot be empty!")
-            else:
-                st.success(f"✅ Tax '{tax_name}' at {tax_rate}% saved successfully!")
-
-    # Item Master Section
-    elif master_option == "📦 Item Master":
-        st.header("📦 Item Management")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            item_name = st.text_input("🔹 Item Name", placeholder="Enter item name")
-            item_stock = st.number_input("📦 Stock Quantity", min_value=0, step=1)
-        with col2:
-            item_price = st.number_input("💰 Item Price", min_value=0.0, step=0.1, format="%.2f")
-
-        if st.button("💾 Save Item"):
-            if item_name.strip() == "":
-                st.error("⚠️ Item name cannot be empty!")
-            else:
-                st.success(f"✅ Item '{item_name}' saved with price {item_price} and stock {item_stock}!")
-
-    # Party Master Section
-    elif master_option == "🏢 Party Master":
-        st.header("🏢 Party Management")
-        col1, col2 = st.columns(2)
-
-        with col1:
-            party_name = st.text_input("🔹 Party Name", placeholder="Enter party name")
-            contact_number = st.text_input("📞 Contact Number", placeholder="Enter phone number")
-        with col2:
-            address = st.text_area("🏠 Address", placeholder="Enter full address")
-
-        if st.button("💾 Save Party"):
-            if party_name.strip() == "":
-                st.error("⚠️ Party name cannot be empty!")
-            elif not contact_number.isdigit():
-                st.error("⚠️ Contact number must be numeric!")
-            else:
-                st.success(f"✅ Party '{party_name}' saved successfully!")
