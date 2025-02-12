@@ -793,221 +793,249 @@ if menu == "Admin":
 
 
 
-# Function to load data from CSV
-def load_data(file_path):
-    try:
-        data = pd.read_csv(file_path)
-        return data
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return None
+# Simulate menu selection (Replace with actual logic)
+menu = "Master Form"  
 
-# Function to save data to CSV
-def save_data(data, file_path):
-    try:
-        data.to_csv(file_path, index=False)
-        st.success(f"Data saved to {file_path}")
-    except Exception as e:
-        st.error(f"Error saving data: {e}")
+# Default value for master_option
+master_option = "🛠 Services"  # A default safe option
 
-# File paths (assuming CSVs are in the same directory)
-item_file = "products.csv"
-service_file = "services.csv"
-tax_file = "taxes.csv"
+# CSV file paths
+SERVICE_FILE = "services.csv"
+TAX_FILE = "taxes.csv"
+PRODUCT_FILE = "products.csv"
+PARTY_FILE = "partymaster.csv"
 
-# Define the function before using it
-def handle_master_form_section(section):
-    st.write(f"Handling section: {section}")
-    # Add logic for handling different sections here
+# Function to load data
+def load_data(file_path, columns):
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path)
+    else:
+        return pd.DataFrame(columns=columns)
 
-# Initialize master_option to avoid NameError
-master_option = None
+# Function to save data
+def save_data(file_path, df):
+    df.to_csv(file_path, index=False)
 
-# Ensure master_option is defined before using it
-if 'master_option' in locals() or 'master_option' in globals():
-    handle_master_form_section(master_option)
+# Load all master data
+service_df = load_data(SERVICE_FILE, ["service_id", "service_name", "description", "price"])
+tax_df = load_data(TAX_FILE, ["tax_id", "tax_type", "rate"])
+product_df = load_data(PRODUCT_FILE, ["product_id", "product_name", "description", "price", "stock"])
+party_df = load_data(PARTY_FILE, ["Party ID", "Party Name", "Phone Number", "Party Address"])
 
-# Sidebar collapsible button
+
+# Sidebar with compact UI and icons
 if menu == "Master Form":
     with st.sidebar.expander("📜 Master Form", expanded=False):
-        master_option = st.radio("Select a Master Form Section",  # Ensure this is not empty
-    ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"]
-)
+        master_option = st.radio(
+            "Select a Master Form Section",
+            ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"],
+            index=0  # Default selection
+        )
+
+# Tab navigation with spacing
+tab1, tab2 = st.tabs(["➕ Add", "📂 Manage"])
+
+# Service Master Form
+if master_option == "🛠 Services":
+    with tab1:
+        st.header("➕ Add New Service")
         
-def handle_master_form_section(section):
-    # Handle Item Master
-    if section == "📦 Item Master":
-        item_data = load_data(item_file)
-        action = st.selectbox("Choose Action", ["Add", "Manage"], key="item_action")
-        
-        if action == "Add":
-            st.subheader("Add New Item")
-            col1, col2, col3 = st.columns([3, 2, 2])
-            
-            with col1:
-                product_name = st.text_input("Product Name")
-                description = st.text_input("Description")
-            with col2:
-                price = st.number_input("Price", min_value=0.0)
-                stock = st.number_input("Stock", min_value=0.0)
-            with col3:
-                category = st.selectbox("Category", ["Electronics", "Furniture", "Clothing", "Groceries"])
-            
-            if st.button("Add Item"):
-                if product_name and description and price >= 0 and stock >= 0:
-                    new_item = pd.DataFrame({
-                        "product_id": [max(item_data['product_id']) + 1],
-                        "product_name": [product_name],
-                        "description": [description],
-                        "price": [price],
-                        "stock": [stock],
-                        "category": [category]
-                    })
-                    item_data = pd.concat([item_data, new_item], ignore_index=True)
-                    save_data(item_data, item_file)
-                    st.success("Item added successfully!")
-                else:
-                    st.error("Please fill in all fields correctly.")
-        
-        elif action == "Manage":
-            st.subheader("Manage Items")
-            st.dataframe(item_data)
+        with st.form("add_service_form"):
             col1, col2 = st.columns(2)
             with col1:
-                item_to_edit = st.selectbox("Edit Item", item_data['product_id'].tolist(), key="edit_item")
+                service_name = st.text_input("Service Name", placeholder="Enter service name", max_chars=100)
             with col2:
-                item_to_delete = st.selectbox("Delete Item", item_data['product_id'].tolist(), key="delete_item")
+                price = st.number_input("Price", min_value=0.0, format="%.2f", placeholder="Enter price")
             
-            if item_to_edit:
-                new_price = st.number_input("New Price", min_value=0.0, key="edit_price")
-                new_stock = st.number_input("New Stock", min_value=0.0, key="edit_stock")
-                if st.button("Update Item"):
-                    item_data.loc[item_data['product_id'] == item_to_edit, ['price', 'stock']] = new_price, new_stock
-                    save_data(item_data, item_file)
-                    st.success("Item updated successfully!")
+            description = st.text_area("Description", placeholder="Provide a detailed description of the service", max_chars=300)
             
-            if item_to_delete:
-                if st.button("Delete Item"):
-                    item_data = item_data[item_data['product_id'] != item_to_delete]
-                    save_data(item_data, item_file)
-                    st.success("Item deleted successfully!")
+            submit_button = st.form_submit_button("Add Service", disabled=not service_name or not description or price <= 0)
 
-    
-    # Handle Services Master
-    elif section == "🛠 Services":
-        service_data = load_data(service_file)
-        action = st.selectbox("Choose Action", ["Add", "Manage"])
+        if submit_button:
+            if service_name and description and price > 0:
+                new_entry = {"service_id": len(service_df) + 1, "service_name": service_name, "description": description, "price": price}
+                service_df = service_df.append(new_entry, ignore_index=True)
+                save_data(SERVICE_FILE, service_df)
+                st.success("✅ Service added successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("⚠️ Please fill out all fields correctly! Ensure the price is greater than 0.")
+
+    with tab2:
+        st.header("📂 Manage Services")
         
-        if action == "Add":
-            st.subheader("Add New Service")
-            col1, col2, col3 = st.columns([2, 2, 2])
-            with col1:
-                service_name = st.text_input("Enter Service Name")
-                description = st.text_input("Enter Service Description")
-            with col2:
-                price = st.number_input("Enter Price", min_value=0.0)
-            with col3:
-                duration = st.number_input("Enter Duration (in hours)", min_value=1)
-            
-            if st.button("Add Service"):
-                if service_name and description and price >= 0 and duration >= 1:
-                    new_service = pd.DataFrame({
-                        "service_id": [max(service_data['service_id']) + 1],
-                        "service_name": [service_name],
-                        "description": [description],
-                        "price": [price],
-                        "duration": [duration]
-                    })
-                    service_data = pd.concat([service_data, new_service], ignore_index=True)
-                    save_data(service_data, service_file)
-                    st.success("Service added successfully!")
+        edited_service_df = st.data_editor(
+            service_df, 
+            num_rows="dynamic",  
+            use_container_width=True,
+            key="service_editor"
+        )
+
+        save_button = st.button("💾 Save Changes", disabled=edited_service_df.equals(service_df))
+        if save_button:
+            save_data(SERVICE_FILE, edited_service_df)
+            st.success("✅ Services updated successfully!")
+            st.experimental_rerun()
+
+        service_to_delete = st.selectbox("🗑️ Select a Service to Delete", service_df["service_id"].astype(str), index=None, placeholder="Choose a service...")
+        if service_to_delete:
+            delete_button = st.button("Delete Service")
+            if delete_button:
+                confirm_delete = st.checkbox("Are you sure you want to delete this service?", value=False)
+                if confirm_delete:
+                    service_df = service_df[service_df["service_id"].astype(str) != service_to_delete]
+                    save_data(SERVICE_FILE, service_df)
+                    st.warning("❌ Service deleted!")
+                    st.experimental_rerun()
                 else:
-                    st.error("Please fill in all fields correctly.")
+                    st.info("❕ Please confirm before deleting.")
+
+# Tax Master Form
+elif master_option == "📊 Tax Master":
+    with tab1:
+        st.header("➕ Add New Tax")
         
-        elif action == "Manage":
-            st.subheader("Manage Services")
-            st.dataframe(service_data)  # Display services
-            
-            # Create 2 columns for service actions (Edit/Delete)
-            col1, col2 = st.columns([2, 2])
-            with col1:
-                service_to_edit = st.selectbox("Select a Service to Edit", service_data['service_id'].tolist())
-            with col2:
-                service_to_delete = st.selectbox("Select a Service to Delete", service_data['service_id'].tolist())
-            
-            # Edit Service
-            if service_to_edit:
-                service_to_edit_data = service_data[service_data['service_id'] == service_to_edit]
-                st.write("Edit Service:", service_to_edit_data)
-                new_price = st.number_input("Enter New Price", min_value=0.0)
-                new_duration = st.number_input("Enter New Duration (in hours)", min_value=1)
-                if st.button("Update Service"):
-                    service_data.loc[service_data['service_id'] == service_to_edit, 'price'] = new_price
-                    service_data.loc[service_data['service_id'] == service_to_edit, 'duration'] = new_duration
-                    save_data(service_data, service_file)
-                    st.success("Service updated successfully!")
-            
-            # Delete Service
-            if service_to_delete:
-                if st.button("Delete Service"):
-                    service_data = service_data[service_data['service_id'] != service_to_delete]
-                    save_data(service_data, service_file)
-                    st.success("Service deleted successfully!")
-    
-    # Handle Tax Master
-    elif section == "📊 Tax Master":
-        tax_data = load_data(tax_file)
-        action = st.selectbox("Choose Action", ["Add", "Manage"])
-        
-        if action == "Add":
-            st.subheader("Add New Tax")
-            col1, col2 = st.columns([2, 2])
-            with col1:
-                tax_type = st.text_input("Enter Tax Type")
-            with col2:
-                rate = st.number_input("Enter Rate", min_value=0.0)
-            
-            if st.button("Add Tax"):
-                if tax_type and rate >= 0:
-                    new_tax = pd.DataFrame({
-                        "tax_id": [max(tax_data['tax_id']) + 1],
-                        "tax_type": [tax_type],
-                        "rate": [rate]
-                    })
-                    tax_data = pd.concat([tax_data, new_tax], ignore_index=True)
-                    save_data(tax_data, tax_file)
-                    st.success("Tax added successfully!")
-                else:
-                    st.error("Please fill in all fields correctly.")
-        
-        elif action == "Manage":
-            st.subheader("Manage Taxes")
-            st.dataframe(tax_data)  # Display taxes
-            
-            # Create 2 columns for tax actions (Edit/Delete)
-            col1, col2 = st.columns([2, 2])
-            with col1:
-                tax_to_edit = st.selectbox("Select a Tax to Edit", tax_data['tax_id'].tolist())
-            with col2:
-                tax_to_delete = st.selectbox("Select a Tax to Delete", tax_data['tax_id'].tolist())
-            
-            # Edit Tax
-            if tax_to_edit:
-                tax_to_edit_data = tax_data[tax_data['tax_id'] == tax_to_edit]
-                st.write("Edit Tax:", tax_to_edit_data)
-                new_rate = st.number_input("Enter New Rate", min_value=0.0)
-                if st.button("Update Tax"):
-                    tax_data.loc[tax_data['tax_id'] == tax_to_edit, 'rate'] = new_rate
-                    save_data(tax_data, tax_file)
-                    st.success("Tax updated successfully!")
-            
-            # Delete Tax
+        with st.form("add_tax_form"):
+            tax_type = st.selectbox("Tax Type", ["GST", "IGST"])
+            tax_rate = st.number_input("Tax Rate (%)", min_value=0.0, format="%.2f", placeholder="Enter tax rate")
+            submit_tax = st.form_submit_button("Add Tax")
+
+        if submit_tax:
+            if tax_rate > 0:
+                new_entry = {"tax_id": len(tax_df) + 1, "tax_type": tax_type, "rate": tax_rate}
+                tax_df = tax_df.append(new_entry, ignore_index=True)
+                save_data(TAX_FILE, tax_df)
+                st.success("✅ Tax added successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("⚠️ Please enter a valid tax rate!")
+
+    with tab2:
+        st.header("📂 Manage Taxes")
+
+        edited_tax_df = st.data_editor(
+            tax_df, 
+            num_rows="dynamic",
+            key="tax_editor"
+        )
+
+        if st.button("💾 Save Changes"):
+            save_data(TAX_FILE, edited_tax_df)
+            st.success("✅ Taxes updated successfully!")
+            st.experimental_rerun()
+
+        tax_to_delete = st.selectbox("🗑️ Select a Tax to Delete", tax_df["tax_id"].astype(str), index=None, placeholder="Choose a tax...")
+        if st.button("Delete Tax"):
             if tax_to_delete:
-                if st.button("Delete Tax"):
-                    tax_data = tax_data[tax_data['tax_id'] != tax_to_delete]
-                    save_data(tax_data, tax_file)
-                    st.success("Tax deleted successfully!")
+                tax_df = tax_df[tax_df["tax_id"].astype(str) != tax_to_delete]
+                save_data(TAX_FILE, tax_df)
+                st.warning("❌ Tax deleted successfully!")
+                st.experimental_rerun()
 
-# Call the function based on selected section
-handle_master_form_section(master_option)
+# Item Master Form
+elif master_option == "📦 Item Master":
+    with tab1:
+        st.header("➕ Add New Item")
+        
+        with st.form("add_item_form"):
+            product_name = st.text_input("📝 Item Name")
+            description = st.text_area("📜 Description", max_chars=300)
+            price = st.number_input("💲 Price", min_value=0.0, format="%.2f")
+            stock = st.number_input("📦 Stock Quantity", min_value=0, step=1)
+            submit_item = st.form_submit_button("➕ Add Item")
+
+        if submit_item:
+            if product_name and price > 0:
+                new_entry = {
+                    "product_id": len(product_df) + 1, 
+                    "product_name": product_name, 
+                    "description": description, 
+                    "price": price, 
+                    "stock": stock
+                }
+                product_df = product_df.append(new_entry, ignore_index=True)
+                save_data(PRODUCT_FILE, product_df)
+                st.success("✅ Item added successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("⚠️ Please enter valid details!")
+
+    with tab2:
+        st.header("📂 Manage Items")
+
+        edited_product_df = st.data_editor(
+            product_df, 
+            num_rows="dynamic",
+            key="product_editor"
+        )
+
+        if st.button("💾 Save Changes"):
+            save_data(PRODUCT_FILE, edited_product_df)
+            st.success("✅ Items updated successfully!")
+            st.experimental_rerun()
+
+        item_to_delete = st.selectbox("🗑️ Select an Item to Delete", product_df["product_id"].astype(str), index=None, placeholder="Choose an item...")
+        if st.button("Delete Item"):
+            if item_to_delete:
+                product_df = product_df[product_df["product_id"].astype(str) != item_to_delete]
+                save_data(PRODUCT_FILE, product_df)
+                st.warning("❌ Item deleted successfully!")
+                st.experimental_rerun()
+
+# Party Master Form
+elif master_option == "🏢 Party Master":
+    with tab1:
+        st.header("➕ Add New Party")
+        
+        with st.form("add_party_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                party_name = st.text_input("Party Name", placeholder="Enter party name")
+            with col2:
+                phone = st.text_input("Phone Number", placeholder="Enter phone number")
+            
+            address = st.text_area("Party Address", placeholder="Provide party address")
+
+            submit_button = st.form_submit_button("Add Party", disabled=not party_name or not phone or not address)
+
+        if submit_button:
+            if party_name and phone and address:
+                new_entry = {"Party ID": len(party_df) + 1, "Party Name": party_name, "Phone Number": phone, "Party Address": address}
+                party_df = party_df.append(new_entry, ignore_index=True)
+                save_data(PARTY_FILE, party_df)
+                st.success("✅ Party added successfully!")
+                st.experimental_rerun()
+            else:
+                st.error("⚠️ Please fill out all fields correctly!")
+
+    with tab2:
+        st.header("📂 Manage Parties")
+        
+        edited_party_df = st.data_editor(
+            party_df, 
+            num_rows="dynamic",  
+            use_container_width=True,  
+            key="party_editor"
+        )
+
+        save_button = st.button("💾 Save Changes", disabled=edited_party_df.equals(party_df))
+        if save_button:
+            save_data(PARTY_FILE, edited_party_df)
+            st.success("✅ Parties updated successfully!")
+            st.experimental_rerun()
+
+        party_to_delete = st.selectbox("🗑️ Select a Party to Delete", party_df["Party ID"].astype(str), index=None, placeholder="Choose a party...")
+        if st.button("Delete Party"):
+            if party_to_delete:
+                confirm_delete = st.checkbox("Are you sure you want to delete this party?", value=False)
+                if confirm_delete:
+                    party_df = party_df[party_df["Party ID"].astype(str) != party_to_delete]
+                    save_data(PARTY_FILE, party_df)
+                    st.warning("❌ Party deleted!")
+                    st.experimental_rerun()
+                else:
+                    st.info("❕ Please confirm before deleting.")
+
+# Display the selected option
+st.write(f"Selected Master Option: {master_option}")
 
