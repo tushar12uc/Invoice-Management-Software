@@ -4,6 +4,7 @@ from fpdf import FPDF
 import matplotlib.pyplot as plt
 import os
 import base64
+import random
 
 # Streamlit App Configuration
 st.set_page_config(
@@ -215,69 +216,127 @@ customers = load_data(CUSTOMERS_FILE, ["customer_id", "customer_name", "address"
 products = load_data(PRODUCTS_FILE, ["product_id", "product_name", "description", "price", "stock"])
 invoices = load_data(INVOICES_FILE, ["invoice_id", "customer_id", "product_ids", "quantities", "total_amount", "payment_status"])
 
-# Generate PDF Invoice
+#Generate Invoice PDF
 def generate_invoice(customer_id, product_ids, quantities, total_amount):
     customer = customers[customers['customer_id'] == customer_id].iloc[0]
     selected_products = products[products['product_id'].isin(product_ids)]
 
     pdf = FPDF()
     pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
 
-    # Logo
-    if os.path.exists("company_logo.png"):
-        pdf.image("company_logo.png", x=160, y=8, w=33)
-
-    # Title and Company Details
-    pdf.set_font("Arial", size=12)
-    pdf.cell(200, 10, txt="INVOICE", ln=True, align='C')
-    pdf.ln(10)
-    pdf.cell(200, 10, txt="Editors Chamber.", ln=True, align='L')
-    pdf.cell(200, 10, txt="Udaipur, India", ln=True, align='L')
-    pdf.cell(200, 10, txt="Pincode: 313324", ln=True, align='L')
-    pdf.cell(200, 10, txt="Email: tushar@editorschamber.in", ln=True, align='L')
+    # Title
+    pdf.set_font("Helvetica", style='B', size=22)
+    pdf.cell(190, 15, "INVOICE", ln=True, align='C')
     pdf.ln(10)
 
+    # Company Details
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.set_x(10)
+    pdf.cell(100, 6, "Editors Chamber", ln=True)
+    pdf.set_font("Helvetica", size=11)
+    pdf.cell(100, 6, "Udaipur, India - 313324", ln=True)
+    pdf.cell(100, 6, "Email: tushar@editorschamber.in", ln=True)
+    pdf.cell(100, 6, "Phone: +91-9988776655", ln=True)
+
+    # Add spacing before Bill To section
+    pdf.ln(10)  
+
+    # Invoice Details
+    pdf.set_xy(120, 30)
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.cell(70, 6, f"Invoice Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}", ln=True, align='R')
+    pdf.set_x(120)
+    pdf.cell(70, 6, f"Invoice No.: INV-{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}", ln=True, align='R')
+    pdf.ln(8)
+    
     # Customer Details
-    pdf.cell(200, 10, txt="Customer Details:-------------", ln=True)
-    pdf.cell(200, 10, txt=f"Customer: {customer['customer_name']}", ln=True)
-    pdf.cell(200, 10, txt=f"Address: {customer['address']}", ln=True)
-    pdf.cell(200, 10, txt=f"Mobile: {customer['mobile']}", ln=True)
-    pdf.cell(200, 10, txt=f"Email: {customer['email']}", ln=True)
-    pdf.ln(10)
+    pdf.ln(10)  # Add extra space before "Bill To" section
+    pdf.set_x(10)
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.cell(100, 6, "Bill To:", ln=True)
+    pdf.ln(5)  # Extra gap below "Bill To" for better separation
+    pdf.set_font("Helvetica", size=11)
+    pdf.multi_cell(100, 6, 
+                   f"Name: {customer['customer_name']}\n"
+                   f"Address: {customer['address']}\n"
+                   f"Mobile: {customer['mobile']}\n"
+                   f"Email: {customer['email']}"
 
-    # Table Header
-    pdf.cell(60, 10, "Product", 1)
-    pdf.cell(60, 10, "Description", 1)
-    pdf.cell(20, 10, "Qty", 1)
-    pdf.cell(30, 10, "Unit Price", 1)
-    pdf.cell(30, 10, "Total", 1)
-    pdf.ln()
+    )
 
+    # Product Table Header
+    pdf.set_fill_color(230, 230, 230)
+    pdf.set_font("Helvetica", style='B', size=10)
+    pdf.cell(60, 10, "Product", 1, 0, 'C', fill=True)
+    pdf.cell(60, 10, "Description", 1, 0, 'C', fill=True)
+    pdf.cell(20, 10, "Qty", 1, 0, 'C', fill=True)
+    pdf.cell(25, 10, "Unit Price", 1, 0, 'C', fill=True)
+    pdf.cell(25, 10, "Total", 1, 1, 'C', fill=True)
+    
+    # Product Table Rows
+    pdf.set_font("Helvetica", size=10)
     total = 0
     for i, product in selected_products.iterrows():
         qty = quantities[product_ids.index(product['product_id'])]
         line_total = product['price'] * qty
         total += line_total
-        pdf.cell(60, 10, product['product_name'], 1)
-        pdf.cell(60, 10, product['description'], 1)
-        pdf.cell(20, 10, str(qty), 1)
-        pdf.cell(30, 10, f"${product['price']:.2f}", 1)
-        pdf.cell(30, 10, f"${line_total:.2f}", 1)
-        pdf.ln()
+        
+        pdf.cell(60, 10, product['product_name'], 1, 0, 'C')
+        pdf.cell(60, 10, product['description'], 1, 0, 'C')
+        pdf.cell(20, 10, str(qty), 1, 0, 'C')
+        pdf.cell(25, 10, f"${product['price']:.2f}", 1, 0, 'C')
+        pdf.cell(25, 10, f"${line_total:.2f}", 1, 1, 'C')
+    
+    pdf.ln(5)
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.cell(165, 10, "Total Amount:", 1, 0, 'R', fill=True)
+    pdf.cell(25, 10, f"${total_amount:.2f}", 1, 1, 'C', fill=True)
+    
+    # Bank Details
+    pdf.ln(10)
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.cell(200, 6, "Bank Details", ln=True, align='L')
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(200, 6, "Bank: State Bank of India, Udaipur", ln=True)
+    pdf.cell(200, 6, "A/c Name: Editors Chamber", ln=True)
+    pdf.cell(200, 6, "A/c No.: 1234567890", ln=True)
+    pdf.cell(200, 6, "IFSC: SBIN0001234", ln=True)
+    
+    # Terms & Conditions
+    pdf.ln(10)
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.cell(100, 6, "Terms and Conditions", ln=True, align='L')
+    pdf.set_font("Helvetica", size=10)
+    pdf.multi_cell(190, 6, 
+                   "1. Payment is due within 30 days from the invoice date.\n"
+                   "2. Late payments may be subject to a 1.5% interest charge per month.\n"
+                   "3. Goods once sold will not be taken back or exchanged unless found faulty.\n"
+                   "4. Prices are subject to change without prior notice.\n"
+                   "5. Any disputes are subject to Udaipur jurisdiction."
+                  )
+    
+    # Authorized Signature
+    pdf.ln(10)
+    pdf.set_font("Helvetica", style='B', size=12)
+    pdf.cell(90, 6, "", ln=False)
+    pdf.cell(100, 6, "Authorized Signature: _____________________", ln=True, align='R')
 
-    pdf.cell(170, 10, "", 0)
-    pdf.cell(30, 10, f"Total: ${total_amount:.2f}", 1)
-
+    # Thank You Message
+    pdf.ln(10)
+    pdf.set_font("Helvetica", style='I', size=10)
+    pdf.cell(200, 6, "Thank you for your business!", ln=True, align='C')
+    
     filename = f"invoice_{customer_id}_{pd.Timestamp.now().strftime('%Y%m%d%H%M%S')}.pdf"
     pdf.output(filename)
     return filename
 
+
 # Sidebar Menu
 st.sidebar.title("Dashboard")
-menu = st.sidebar.radio(
-    "Navigation",
-    ["Home", "Customer Management", "Product Management", "Invoice Management","Admin","Master Form","Order Management"]
-)
+# Sidebar for navigation
+menu = st.sidebar.radio("Navigation", ["Home", "Customer Management", "Product Management", 
+                                       "Invoice Management", "Admin", "Master Form", "Order Management"])
 
 #Home Section
 if menu == "Home":
@@ -300,7 +359,7 @@ if menu == "Home":
             """
             <div class="card">
                 <h3 style="margin: 0;">09</h3>
-                <p>User Registrations</p>
+                <p>Services</p>
                 <button style="padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
             </div>
             """,
@@ -311,7 +370,7 @@ if menu == "Home":
             """
             <div class="card">
                 <h3 style="margin: 0;">10</h3>
-                <p>Pending Payments</p>
+                <p>Taxes</p>
                 <button style="padding: 8px 12px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
             </div>
             """,
@@ -333,7 +392,7 @@ if menu == "Home":
             """
             <div class="card">
                 <h3 style="margin: 0;">25</h3>
-                <p>Customers</p>
+                <p>Parties</p>
                 <button style="padding: 8px 12px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">More info</button>
             </div>
             """,
@@ -566,45 +625,67 @@ elif menu == "Product Management":
 
             else:
                 st.error("⚠️ Product ID not found!")
-
-# Invoice Management
+                
+# Invoice Management UI Enhancements
 elif menu == "Invoice Management":
-    st.markdown("<h2 style='color: #4CAF50; text-align:center;'>📜 Invoice Management</h2>", unsafe_allow_html=True)
-    action = st.radio("🛠 Choose Action", ["➕ Create", "📂 Manage"], horizontal=True)
+    st.markdown(
+        "<h2 style='color: #2E86C1; text-align:center; font-family: Arial;'>📜 Invoice Management</h2>", 
+        unsafe_allow_html=True
+    )
+    action = st.radio(
+        "🛠 Choose Action", 
+        ["➕ Create Invoice", "📂 Manage Invoices"], 
+        horizontal=True
+    )
 
-    if action == "➕ Create":
-        st.markdown("<h3 style='color: #4CAF50;'>🆕 Create Invoice</h3>", unsafe_allow_html=True)
+    # ➕ Create Invoice Section
+    if action == "➕ Create Invoice":
+        st.markdown("<h3 style='color: #2E86C1; font-family: Arial;'>🆕 Create New Invoice</h3>", unsafe_allow_html=True)
+        st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
 
-        # Customer, Payment Status, and Invoice ID
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**👤 Customer**", unsafe_allow_html=True)
-            customer_names = customers['customer_name'].tolist()
-            selected_customer = st.selectbox("Select", customer_names)
-            customer_id = customers.loc[customers['customer_name'] == selected_customer, 'customer_id'].values[0]
-        
-        with col2:
-            st.markdown("**💳 Payment Status**", unsafe_allow_html=True)
-            payment_status = st.selectbox("", ["✅ Paid", "❌ Unpaid", "🔄 Partially Paid"])
-        
-        with col3:
-            st.markdown("**🧾 Invoice ID**", unsafe_allow_html=True)
-            invoice_id = len(invoices) + 1
-            st.markdown(f"<h4 style='color: #FF5733;'>#{invoice_id}</h4>", unsafe_allow_html=True)
+        # Customer Selection, Payment Status, and Invoice ID
+        with st.container():
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("**👤 Customer**", unsafe_allow_html=True)
+                selected_customer = st.selectbox(
+                    "Select Customer", 
+                    customers['customer_name'].tolist(), 
+                    help="Select the customer for this invoice"
+                )
+                customer_id = customers.loc[customers['customer_name'] == selected_customer, 'customer_id'].values[0] if selected_customer else None
+            
+            with col2:
+                st.markdown("**💳 Payment Status**", unsafe_allow_html=True)
+                payment_status = st.selectbox(
+                    "Select Payment Status", 
+                    ["✅ Paid", "❌ Unpaid", "🔄 Partially Paid"],
+                    help="Specify the payment status"
+                )
+            
+            with col3:
+                st.markdown("**🧾 Invoice ID**", unsafe_allow_html=True)
+                invoice_id = len(invoices) + 1
+                st.markdown(f"<h4 style='color: #D35400;'>#{invoice_id}</h4>", unsafe_allow_html=True)
 
         # Product Selection
-        st.markdown("<hr>", unsafe_allow_html=True)
-        st.markdown("**🛍️ Select Products**", unsafe_allow_html=True)  
-        selected_products = st.multiselect("➕ Add", products['product_name'].tolist())
+        st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
+        st.markdown("### 🛍️ Select Products")  
+        selected_products = st.multiselect(
+            "➕ Add Products", 
+            products['product_name'].tolist(),
+            help="Choose products to include in the invoice"
+        )
 
-        # Product Table
+        # Display Product Table with Dynamic Calculations
+        product_details = []
+        subtotal = 0
         if selected_products:
-            st.markdown("### 📦 Product Details")
-            product_details = []
+            st.markdown("<h4 style='color: #2E86C1;'>📦 Product Details</h4>", unsafe_allow_html=True)
             for product in selected_products:
                 col1, col2, col3 = st.columns([2, 1, 1])
                 with col1:
-                    qty = st.number_input(f"{product}", min_value=1, value=1, key=product)
+                    qty = st.number_input(f"Quantity for {product}", min_value=1, value=1, key=product)
                 with col2:
                     price = products.loc[products['product_name'] == product, 'price'].values[0]
                     st.markdown(f"**💰 ₹{price:.2f}**")
@@ -612,45 +693,98 @@ elif menu == "Invoice Management":
                     total_price = qty * price
                     st.markdown(f"**🔄 ₹{total_price:.2f}**")
                 product_details.append((product, qty, price))
+                subtotal += total_price
 
-        # Discount & Tax
-        st.markdown("<hr>", unsafe_allow_html=True)
+        # Discount & Tax Calculation with Dynamic Totals
+        st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns(3)
         with col1:
-            discount_value = st.number_input("💸 Discount (%)", min_value=0.0, max_value=100.0, value=0.0)
+            discount_value = st.number_input(
+                "💸 Discount (%)", 
+                min_value=0.0, max_value=100.0, value=0.0,
+                help="Enter discount percentage"
+            )
         with col2:
-            tax_options = {"18%": 1.18, "28%": 2.28, "12%": 3.12}
-            tax_label = st.selectbox("📊 GST Tax", list(tax_options.keys()))
+            tax_options = {"18%": 0.18, "28%": 0.28, "12%": 0.12}
+            tax_label = st.selectbox(
+                "📊 GST Tax", 
+                list(tax_options.keys()),
+                help="Select applicable GST rate"
+            )
             tax_value = tax_options[tax_label]
+        
         with col3:
             if selected_products:
-                subtotal = sum(p * q for _, q, p in product_details)
-                total = subtotal * (1 - discount_value / 100) * (1 + tax_value / 100)
-                st.markdown(f"<h3 style='color: #4CAF50;'>🧾 Subtotal: ₹{subtotal:.2f} | <strong style='color: #FF5733;'>Total: ₹{total:.2f}</strong></h3>", unsafe_allow_html=True)
-
-        # Generate Invoice
-        st.markdown("<hr>", unsafe_allow_html=True)
-        if st.button("📄 Generate Invoice", use_container_width=True):
-            filename = generate_invoice(customer_id, [p[0] for p in product_details], [p[1] for p in product_details], total)
-            new_invoice = pd.DataFrame([[invoice_id, customer_id, [p[0] for p in product_details], [p[1] for p in product_details], total, payment_status]],
-                                       columns=["invoice_id", "customer_id", "products", "quantities", "total_amount", "payment_status"])
-            invoices = pd.concat([invoices, new_invoice], ignore_index=True)
-            save_data(invoices, INVOICES_FILE)
-            st.success("🎉 Invoice generated!")
-
-            with open(filename, "rb") as f:
-                st.download_button("📥 Download PDF", data=f, file_name=filename, mime="application/pdf", use_container_width=True)
-
-    elif action == "📂 Manage":
-        st.markdown("<h3 style='color: #4CAF50;'>📋 Manage Invoices</h3>", unsafe_allow_html=True)
-        search_query = st.text_input("🔎 Search by Customer Name or Invoice ID")
-        filtered_invoices = invoices[
-            invoices['customer_id'].astype(str).str.contains(search_query, case=False) | 
-            invoices['invoice_id'].astype(str).str.contains(search_query, case=False)
-        ] if search_query else invoices
-        st.dataframe(filtered_invoices, use_container_width=True)
+                discounted_total = subtotal * (1 - discount_value / 100)
+                total = discounted_total * (1 + tax_value)
+                st.markdown(f"<h3 style='color: #2E86C1;'>Subtotal: ₹{subtotal:.2f}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='color: #D35400;'>Total: ₹{total:.2f}</h3>", unsafe_allow_html=True)
 
 
+                
+
+# Separator
+st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
+
+# Invoice Generation Section
+st.subheader("Generate Invoice")
+
+# Align buttons and messages using columns
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col2:
+    generate_clicked = st.button("📄 Generate Invoice", use_container_width=True)
+
+if generate_clicked:
+    with st.spinner("Generating invoice..."):
+        # Check for input validation
+        if not customer_id:
+            st.error("⚠️ Please select a customer.")
+        elif not selected_products:
+            st.error("⚠️ Please select at least one product.")
+        else:
+            try:
+                # Extract product IDs and quantities
+                product_ids = [products.loc[products['product_name'] == p[0], 'product_id'].values[0] for p in product_details]
+                quantities = [p[1] for p in product_details]
+
+                # Generate the invoice and get the filename
+                filename = generate_invoice(customer_id, product_ids, quantities, total)
+
+                if filename:
+                    # Save invoice data
+                    new_invoice = pd.DataFrame([[
+                        invoice_id,
+                        customer_id,
+                        product_ids,
+                        quantities,
+                        total,
+                        payment_status
+                    ]], columns=["invoice_id", "customer_id", "products", "quantities", "total_amount", "payment_status"])
+
+                    invoices = pd.concat([invoices, new_invoice], ignore_index=True)
+                    save_data(invoices, INVOICES_FILE)
+
+                    # Success message
+                    st.success("🎉 Invoice generated successfully!")
+
+                    # Show download button with better UX
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    with open(filename, "rb") as f:
+                        st.download_button(
+                            label="📥 Download PDF",
+                            data=f,
+                            file_name=filename,
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                else:
+                    st.error("Failed to generate invoice. Please try again.")
+
+            except FileNotFoundError:
+                st.error("Error: Invoice file not found.")
+            except Exception as e:
+                st.error(f"Unexpected error: {e}")
 
 
 
@@ -792,7 +926,6 @@ if menu == "Admin":
 
 
 
-
 # Simulate menu selection (Replace with actual logic)
 menu = "Master Form"  
 
@@ -825,12 +958,8 @@ party_df = load_data(PARTY_FILE, ["Party ID", "Party Name", "Phone Number", "Par
 
 # Sidebar with compact UI and icons
 if menu == "Master Form":
-    with st.sidebar.expander("📜 Master Form", expanded=False):
-        master_option = st.radio(
-            "Select a Master Form Section",
-            ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"],
-            index=0  # Default selection
-        )
+    with st.sidebar.expander("📜 Master Form", expanded=True): 
+        master_option = st.radio("Master Options", ["🛠 Services", "📊 Tax Master", "📦 Item Master", "🏢 Party Master"])
 
 # Tab navigation with spacing
 tab1, tab2 = st.tabs(["➕ Add", "📂 Manage"])
@@ -891,7 +1020,7 @@ if master_option == "🛠 Services":
                     st.info("❕ Please confirm before deleting.")
 
 # Tax Master Form
-elif master_option == "📊 Tax Master":
+if master_option == "📊 Tax Master":
     with tab1:
         st.header("➕ Add New Tax")
         
@@ -933,7 +1062,7 @@ elif master_option == "📊 Tax Master":
                 st.experimental_rerun()
 
 # Item Master Form
-elif master_option == "📦 Item Master":
+if master_option == "📦 Item Master":
     with tab1:
         st.header("➕ Add New Item")
         
@@ -983,7 +1112,7 @@ elif master_option == "📦 Item Master":
                 st.experimental_rerun()
 
 # Party Master Form
-elif master_option == "🏢 Party Master":
+if master_option == "🏢 Party Master":
     with tab1:
         st.header("➕ Add New Party")
         
@@ -1038,4 +1167,10 @@ elif master_option == "🏢 Party Master":
 
 # Display the selected option
 st.write(f"Selected Master Option: {master_option}")
+
+
+
+
+
+
 
