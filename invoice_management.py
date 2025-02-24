@@ -251,19 +251,16 @@ def generate_invoice(customer_id, product_ids, quantities, total_amount):
     pdf.ln(8)
     
     # Customer Details
-    pdf.ln(10)  # Add extra space before "Bill To" section
+    pdf.ln(10)  # Space before section
     pdf.set_x(10)
     pdf.set_font("Helvetica", style='B', size=12)
-    pdf.cell(100, 6, "Bill To:", ln=True)
-    pdf.ln(5)  # Extra gap below "Bill To" for better separation
-    pdf.set_font("Helvetica", size=11)
-    pdf.multi_cell(100, 6, 
-                   f"Name: {customer['customer_name']}\n"
-                   f"Address: {customer['address']}\n"
-                   f"Mobile: {customer['mobile']}\n"
-                   f"Email: {customer['email']}"
+    pdf.cell(100, 6, "Bill To:", ln=True, align='L')
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(100, 6, f"Name: {customer['customer_name']}", ln=True, align='L')
+    pdf.cell(100, 6, f"Address: {customer['address']}", ln=True, align='L')
+    pdf.cell(100, 6, f"Mobile: {customer['mobile']}", ln=True, align='L')
+    pdf.cell(100, 6, f"Email: {customer['email']}", ln=True, align='L')
 
-    )
 
     # Product Table Header
     pdf.set_fill_color(230, 230, 230)
@@ -292,6 +289,63 @@ def generate_invoice(customer_id, product_ids, quantities, total_amount):
     pdf.set_font("Helvetica", style='B', size=12)
     pdf.cell(165, 10, "Total Amount:", 1, 0, 'R', fill=True)
     pdf.cell(25, 10, f"${total_amount:.2f}", 1, 1, 'C', fill=True)
+
+
+    # New Table Header for Tax Details
+    pdf.ln(10)
+    pdf.set_fill_color(230, 230, 230)
+    pdf.set_font("Helvetica", style='B', size=10)
+
+    # Adjusted column widths for better alignment
+    pdf.cell(50, 10, "Amount", 1, 0, 'C', fill=True)        
+    pdf.cell(20, 10, "CGST%", 1, 0, 'C', fill=True)        
+    pdf.cell(30, 10, "CGST", 1, 0, 'C', fill=True)         
+    pdf.cell(20, 10, "SGST%", 1, 0, 'C', fill=True)        
+    pdf.cell(30, 10, "SGST", 1, 1, 'C', fill=True)         
+
+# Tax Details Rows
+    cgst_rate = 14  
+    sgst_rate = 14  
+    total_cgst = 0
+    total_sgst = 0
+    grand_total = 0
+
+    pdf.set_font("Helvetica", size=10)
+    for i, product in selected_products.iterrows():
+     qty = quantities[product_ids.index(product['product_id'])]
+    line_total = product['price'] * qty
+    cgst = (line_total * cgst_rate) / 100
+    sgst = (line_total * sgst_rate) / 100
+    total_cgst += cgst
+    total_sgst += sgst
+    grand_total += line_total + cgst + sgst
+    
+    pdf.cell(50, 10, f"{line_total:.2f}", 1, 0, 'R')
+    pdf.cell(20, 10, f"{cgst_rate}%", 1, 0, 'C')
+    pdf.cell(30, 10, f"{cgst:.2f}", 1, 0, 'R')
+    pdf.cell(20, 10, f"{sgst_rate}%", 1, 0, 'C')
+    pdf.cell(30, 10, f"{sgst:.2f}", 1, 1, 'R')
+
+# Bold Total Row
+    pdf.set_font("Helvetica", style='B', size=10)
+    pdf.cell(50, 10, f"{line_total:.2f}", 1, 0, 'R')
+    pdf.cell(20, 10, "", 1, 0, 'C')
+    pdf.cell(30, 10, f"{total_cgst:.2f}", 1, 0, 'R')
+    pdf.cell(20, 10, "", 1, 0, 'C')
+    pdf.cell(30, 10, f"{total_sgst:.2f}", 1, 1, 'R')
+
+# Grand Total in Words
+# Grand Total Amount
+    grand_total = total + total_cgst + total_sgst
+    pdf.cell(120, 10, "Grand Total:", 1, 0, 'R', fill=True)
+    pdf.cell(30, 10, f"${grand_total:.2f}", 1, 1, 'R', fill=True)
+    from num2words import num2words  # Make sure to install this package
+
+    grand_total_words = num2words(grand_total, to='currency', lang='en_IN').upper()
+    pdf.ln(5)
+    pdf.set_font("Helvetica", style='B', size=10)
+    pdf.cell(0, 10, f"{grand_total_words} DOLLER ONLY", 0, 1, 'L')
+
     
     # Bank Details
     pdf.ln(10)
